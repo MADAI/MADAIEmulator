@@ -1,4 +1,5 @@
 #include "rbind.h"
+#include "maxmultimin.h"
 
 /**
  * \todo make similar or wrapper functions which would allow any C compatible ffi 
