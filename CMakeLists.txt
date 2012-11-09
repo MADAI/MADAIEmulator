@@ -101,3 +101,6 @@ INSTALL_FILES("/include/libRbind/" FILES src/libRbind/rbind.h src/libRbind/EmuRb
 
 ## ccs, install the man page
 INSTALL(FILES interactive_emulator.1 DESTINATION "${CMAKE_INSTALL_PREFIX}/man/man1")
+
+## Configure package file
+configure_file( MADAIEmulatorConfig.cmake.in "${PROJECT_BINARY_DIR}/MADAIEmulatorConfig.cmake" @ONLY )

@@ -1,0 +1,3 @@
+set( MADAIEmulator_LIBRARIES EmuPlusPlus )
+set( MADAIEmulator_LIBRARY_DIRS @PROJECT_BINARY_DIR@/src )
+set( MADAIEmulator_INCLUDE_DIRS @PROJECT_SORUCE_DIR@/src )
