@@ -64,8 +64,6 @@ void maxWithMultiMin(struct estimate_thetas_params *params){
 	gsl_vector *xBest = gsl_vector_alloc(nthetas);
 	gsl_vector *xTest = gsl_vector_alloc(nthetas-1);
 	double *tempVec = malloc(sizeof(double)*nthetas);
-	double sigma = 0.0;
-	pthread_t self = pthread_self(); // this is your thread id
 	
 	// init our vectors
 	gsl_vector_set_zero(xBest);
@@ -155,7 +153,6 @@ double estimateSigmaFull(gsl_vector *thetas, void* params_in){
 	int nmodel_points = params->options->nmodel_points;
 	int nthetas = params->options->nthetas;
 	int nparams = params->options->nparams;
-	int nthetas_opt = nthetas - 1;
 	int i,j;
 	int cholesky_test;
 	gsl_matrix* xmodel = params->the_model->xmodel;
@@ -572,6 +569,7 @@ void gradFnMulti(const gsl_vector* theta_vec_less_amp, void* params_in, gsl_vect
  * see Rasumussen eqn 5.9 for a little simplification of the algebra here
  */
 double getGradientCn(gsl_matrix * dCdtheta, gsl_matrix *cinverse,  gsl_vector* training_vector,int nmodel_points, int nthetas){
+	(void) nthetas;
 	double grad = 0;
 	double trace = 0;
 	int i;
@@ -639,8 +637,6 @@ int doOptimizeMultiMin( double(*fn)(const gsl_vector*, void*),													\
 	
 	struct estimate_thetas_params *params = (struct estimate_thetas_params*)args;
 
-	int nparams = params->options->nparams;
-	int nmpoints = params->options->nmodel_points;
 	int nthetas = params->options->nthetas;
 	int nthetas_opt = nthetas - 1; 
 	int status;
@@ -654,7 +650,6 @@ int doOptimizeMultiMin( double(*fn)(const gsl_vector*, void*),													\
 	double stepSizeInit = 1.5;
 	double tolerance = 0.5; // sets the accuracy of the line search. 
 	double fnValue = 0.0;
-	double norm = 0.0; // norm of the gradient
 	/*
 	 * we stop when |g| < epsAbs, not sure how to set this yet
 	 */

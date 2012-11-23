@@ -125,7 +125,6 @@ void callEmulateAtList(double *xmodel_in, int *nparams_in, double* points_in, in
 	modelstruct the_model;
 	//double the_mean, the_variance;
 	gsl_matrix *the_point_array;
-	int i, j;
 
 	options.nmodel_points = *nmodelpts;
 	options.nparams = *nparams_in;
@@ -219,7 +218,6 @@ void callEmulateAtPt(double* xmodel_in, int* nparams_in, double* point_in, doubl
 	modelstruct the_model;
 	double the_mean, the_variance;
 	gsl_vector *the_point;
-	int i;
 
 	options.nmodel_points = *nmodelpts;
 	options.nparams = *nparams_in;
@@ -488,11 +486,10 @@ void setupEmulateMCMulti(double* xmodel_in, int* nparams_in,
 												 int *cov_fn_index_in, int*regression_order_in){
 
 	int nydims = *nydims_in;
-	int nparams = *nparams_in;
 	int nmodelpts = *nmodelpts_in;
 	int nthetas = *nthetas_in;
 	int index;
-	int i,j;
+	int i;
 	double *training_double_vec = MallocChecked(sizeof(double)*nmodelpts);
 	double *theta_double_vec = MallocChecked(sizeof(double)*nthetas);
 
@@ -640,7 +637,7 @@ void callEvalLhoodList(double *xmodel_in, int *nparams_in, double *pointList_in,
 	gsl_vector_view point_vec_view;
 
 	double *xinput;
-	int i,j;
+	int i;
 	struct estimate_thetas_params params;
 
 	const gsl_rng_type *T;

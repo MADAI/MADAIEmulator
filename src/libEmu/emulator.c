@@ -99,9 +99,9 @@ void print_matrix(gsl_matrix* m, int nx, int ny){
  *
  */
 double covariance_fn_gaussian(gsl_vector *xm, gsl_vector* xn, gsl_vector* thetas, int nthetas, int nparams){
+	(void) nthetas;
 	// calc the covariance for a given set of input points
 	int i, truecount  = 0;
-	int theta_offest = 2; // how many entries to look ahread in thetas to get the length scales
 	double covariance = 0.0;
 	double exponent = 0.0;
 	double xm_temp = 0.0;
@@ -172,12 +172,11 @@ double covariance_fn_gaussian(gsl_vector *xm, gsl_vector* xn, gsl_vector* thetas
  */
 void derivative_l_gauss(gsl_matrix *dCdTheta, gsl_matrix* xmodel, 
 												double thetaLength, int index, int nmodel_points, int nparams){ 
+	(void) nparams;
 	int i, j;
-	double scale;
 	double rtemp;
 	const int nthetasConstant = 2;
 	int indexScaled = index - nthetasConstant;
-	double thetaLCubed;
 	double partialCov = 0.0;
 	double expTheta = exp(-2.0*thetaLength);
 
@@ -357,7 +356,6 @@ double covariance_fn_matern_three(gsl_vector *xm, gsl_vector* xn, gsl_vector* th
 	double nugget = gsl_vector_get(thetas,1); 
 	double rho = exp(gsl_vector_get(thetas, 2));
 
-	double tempx = 0.0;
 	double root3 = 1.732050808;
 
 	// calculate the euclidean distance between the two points;
@@ -410,7 +408,6 @@ void derivative_l_matern_three(gsl_matrix *dCdTheta, gsl_matrix* xmodel, double 
 	gsl_vector_view xmodel_row_j;
 	double root3 = 1.732050808;
 	double rtemp = 0.0;
-	const int nthetasConstant = 2;
 	double thetaLCubed = thetaLength * thetaLength * thetaLength;
 
 	for(i = 0; i < nmodel_points; i++){
@@ -452,7 +449,6 @@ double covariance_fn_matern_five(gsl_vector *xm, gsl_vector* xn, gsl_vector* the
 	double nugget = gsl_vector_get(thetas,1);
 	double rho = exp(gsl_vector_get(thetas, 2));
 
-	double tempx = 0.0;
 	double root5 = 2.236067978;
 
 	double d_over_r = 0.0;
@@ -509,7 +505,6 @@ void derivative_l_matern_five(gsl_matrix *dCdTheta, gsl_matrix* xmodel, double t
 	double root5 = 2.2360680;
 	double rtemp = 0.0;
 	double rsq = 0.0;
-	const int nthetasConstant = 2;
 	double thetaLCubed = thetaLength * thetaLength * thetaLength;
 
 	for(i = 0; i < nmodel_points; i++){

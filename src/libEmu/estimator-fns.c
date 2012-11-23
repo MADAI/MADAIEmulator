@@ -40,6 +40,8 @@ double getLogLikelyhood(gsl_matrix *cinverse, double det_cmatrix,  gsl_matrix *x
 												int nthetas, int nparams, int nregression_fns, 
 												void(*makeHVector)(gsl_vector *, gsl_vector*, int))
 {
+	(void) thetas;
+	(void) nthetas;
 	int i;
 	double the_likelyhood = 0.0;
 	double vector_matrix_vector_product = 0.0;

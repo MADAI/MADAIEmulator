@@ -39,7 +39,6 @@ double best_likelyhood_val = SCREWUPVALUE;
 
 int get_number_cpus(void){
 	int ncpus = 0;
-	char buffer[256];
 	/* now try and find the number of threads by seeing how many cpus we have */
 	ncpus = sysconf(_SC_NPROCESSORS_ONLN); // man 3 sysconf (should be posix?)
 	if(ncpus == -1){

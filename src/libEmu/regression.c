@@ -7,13 +7,14 @@
 /* } */
 
 void makeHVector_trivial(gsl_vector *h_vector, gsl_vector *x_location, int nparams){
+	(void) x_location;
+	(void) nparams;
 	gsl_vector_set_zero(h_vector);
 	gsl_vector_set(h_vector, 0, 1);
 }
 
 void makeHVector_linear(	gsl_vector *h_vector, gsl_vector *x_location, int nparams){
 	int i;
-	int offset = nparams + 1;
 	double temp_val;
 	gsl_vector_set(h_vector, 0, 1); // the first element is always a constant
 	for(i = 0; i < nparams; i++) {
@@ -32,7 +33,6 @@ void makeHVector_linear(	gsl_vector *h_vector, gsl_vector *x_location, int npara
  */
 void makeHVector_quadratic( gsl_vector *h_vector, gsl_vector *x_location, int nparams){
 	int i;
-	int offset = nparams + 1;
 	double temp_val;
 	gsl_vector_set(h_vector, 0, 1); // the first element is always a constant
 	for(i = 0; i < nparams; i++) {
@@ -48,7 +48,6 @@ void makeHVector_quadratic( gsl_vector *h_vector, gsl_vector *x_location, int np
 
 void makeHVector_cubic( gsl_vector *h_vector, gsl_vector *x_location, int nparams){
 	int i;
-	int offset = nparams + 1;
 	double temp_val;
 	gsl_vector_set(h_vector, 0, 1); // the first element is always a constant
 	for(i = 0; i < nparams; i++) {
@@ -76,7 +75,7 @@ void makeHVector_cubic( gsl_vector *h_vector, gsl_vector *x_location, int nparam
  * not threadsafe: uses the global fnptr makeHVector(...) 
  */
 void makeHMatrix(gsl_matrix *h_matrix, gsl_matrix *xmodel, int nmodel_points, int nparams, int nregression_fns){
-	int i,j; 
+	int i; 
 	gsl_vector *h_vec = gsl_vector_alloc(nregression_fns);
 	gsl_vector_view xmodel_row_i;
 	
@@ -100,7 +99,7 @@ void makeHMatrix(gsl_matrix *h_matrix, gsl_matrix *xmodel, int nmodel_points, in
  */
 void makeHMatrix_fnptr(gsl_matrix *h_matrix, gsl_matrix *xmodel, int nmodel_points, int nparams, int nregression_fns,
 											 void (*makeHVector_ptr)(gsl_vector *h_vector, gsl_vector *x_location, int nparams)){
-	int i,j; 
+	int i; 
 	gsl_vector *h_vec = gsl_vector_alloc(nregression_fns);
 	gsl_vector_view xmodel_row_i;
 	

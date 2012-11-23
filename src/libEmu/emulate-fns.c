@@ -137,7 +137,6 @@ void emulateAtPointList(modelstruct *the_model, gsl_matrix* point_list, optstruc
  */
 void emulateAtPoint(modelstruct *the_model, gsl_vector* the_point, optstruct* options, double* the_mean, double* the_variance){
 
-	int i;
 	double determinant_c = 0.0;
 
 	gsl_matrix *c_matrix = gsl_matrix_alloc(options->nmodel_points, options->nmodel_points);
@@ -147,7 +146,6 @@ void emulateAtPoint(modelstruct *the_model, gsl_vector* the_point, optstruct* op
 	gsl_matrix *temp_matrix = gsl_matrix_alloc(options->nmodel_points, options->nmodel_points);
 	double kappa;
 	double temp_mean, temp_var;
-	gsl_vector_view new_x_row;
 	gsl_vector *kplus = gsl_vector_alloc(options->nmodel_points);
 	gsl_vector *h_vector = gsl_vector_alloc(options->nregression_fns);
 
@@ -205,7 +203,6 @@ void emulateQuick( modelstruct *the_model, gsl_vector* the_point, optstruct* opt
 
 	double kappa;
 	double temp_mean, temp_var;
-	gsl_vector_view new_x_row;
 	gsl_vector *kplus = gsl_vector_alloc(options->nmodel_points);
 	gsl_vector *h_vector = gsl_vector_alloc(options->nregression_fns);
 
