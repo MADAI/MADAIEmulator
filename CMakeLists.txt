@@ -10,6 +10,10 @@ project (Emulator)
 #####set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/local")
 ########################
 
+set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib )
+set( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib )
+set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin )
+
 
 # lets get a version number from git
 execute_process(
