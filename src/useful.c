@@ -4,6 +4,7 @@
 #include "string.h"
 #include "sys/time.h"
 #include "useful.h"
+#include "assert.h"
 
 
 
@@ -24,7 +25,7 @@ int i;
 	fprintf(stderr,"\n");
 }
 
-// RNG 
+// RNG
 // tries to read from /dev/random, or otherwise uses the system time
 unsigned long int get_seed(void){
 	unsigned int seed;
@@ -37,14 +38,15 @@ unsigned long int get_seed(void){
 		//fprintf(stderr,"Got seed %u from gettimeofday()\n", seed);
 	}
 	else {
-		fread(&seed, sizeof(seed), 1, devrandom);
+		int ret = fread(&seed, sizeof(seed), 1, devrandom);
+		assert(ret == 1);
 		//fprintf(stderr, "Got seed %u from /dev/random\n", seed);
 		fclose(devrandom);
 	}
 	return(seed);
 }
 
-// RNG 
+// RNG
 // tries to read from /dev/random, or otherwise uses the system time
 unsigned long int get_seed_noblock(void){
 	unsigned long int seed;
@@ -57,10 +59,25 @@ unsigned long int get_seed_noblock(void){
 		//fprintf(stderr,"Got seed %u from gettimeofday()\n", seed);
 	}
 	else {
-		fread(&seed, sizeof(seed), 1, devrandom);
+		int ret = fread(&seed, sizeof(seed), 1, devrandom);
+		assert (ret == 1);
 		//fprintf(stderr, "Got seed %u from /dev/random\n", seed);
 		fclose(devrandom);
 	}
 	return(seed);
 }
 
+int read_integer(FILE *fptr) {
+	assert(fptr != NULL);
+	int i;
+	int ret = fscanf(fptr, "%d%*c", &i);
+	assert(ret == 1);
+	return i;
+}
+double read_double(FILE *fptr) {
+	assert(fptr != NULL);
+	double d;
+	int ret = fscanf(fptr, "%lf%*c", &d);
+	assert(ret == 1);
+	return d;
+}

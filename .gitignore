@@ -21,6 +21,7 @@ docs
 
 ## default build directory
 build_emulator/
+test/emuplusplus-test/build_test/
 
 ## Created for some reason by cmake.
 src/buildConfig.h

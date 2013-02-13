@@ -28,59 +28,14 @@ LICENSE:
   <http://www.gnu.org/licenses/gpl-3.0-standalone.html>.
 
 USE:
-  useage: 
-    interactive_emulator estimate_thetas INPUT_MODEL_FILE MODEL_SNAPSHOT_FILE [OPTIONS]
-  or
-    interactive_emulator interactive_mode MODEL_SNAPSHOT_FILE
-  or 
-    interactive_emulator print_thetas MODEL_SNAPSHOT_FILE
+  For details on how to use the interactive_emulator, consult the
+  manpage via:
 
-  INPUT_MODEL_FILE can be "-" to read from standard input.
+    $ nroff -man < [PATH_TO/]interactive_emulator.1 | less
 
-  The input MODEL_SNAPSHOT_FILE for interactive_mode must match the format of
-  the output MODEL_SNAPSHOT_FILE from estimate_thetas.
+  or, if the manual is installed:
 
-  Options for estimate_thetas can include:
-    --regression_order=0
-    --regression_order=1
-    --regression_order=2
-    --regression_order=3
-    --covariance_fn=0 (POWER_EXPONENTIAL)
-    --covariance_fn=1 (MATERN32)
-    --covariance_fn=2 (MATERN52)
-  The defaults are regression_order=0 and covariance_fn=POWER_EXPONENTIAL.
-
-  These options will be saved in MODEL_SNAPSHOT_FILE.
-
-INPUT_MODEL_FILE (With multi-output) FORMAT:
-  Models with multivariate output values y = y_1...y_t which we will think of as rows of a matrix, in the following spec
-  number_outputs = t
-  BEGIN EXAMPLE
-    number_outputs
-    number_params 
-    number_model_points
-    X[0,0]
-    ...
-    X[0,number_params-1]
-    X[1,0]
-    ...
-    X[number_model_points-1,number_params-1]
-    Y[0, 0]
-    Y[0, 1]
-    ...
-    Y[0, number_outputs-1]
-    ...
-    Y[1, 1]
-    ... 
-    Y[number_model_points-1, number_outputs-1]
-   END EXAMPLE
-
-  number_outputs, number_params and number_model_points should be
-  positive integers.  X[i,j] and Y[i,j] will be read as
-  double-precision floats.
-
-  You don't have to use newlines to separate values.  If fscanf(fp,
-  "%lf%*c", ptr) can read the value, it will work.
+    $ man 1 interactive_emulator
 
 BUGS:
   Writing MODEL_SNAPSHOT_FILE to stdout is not allowed because
@@ -107,12 +62,11 @@ BIGGEST BUG:
   
 
  TODO:
-  - allow the design x[0,0]...x[nmodel_points,nparams-1] to be read separately from the 
-  training points
-  - check for scaling of design and training values, warn if they different columns have very different scales
+  - allow the design x[0,0]...x[nmodel_points,nparams-1] to be
+    read separately from the training points
+  - check for scaling of design and training values, warn if they
+    different columns have very different scales
   - make estimation process respect the quiet flag?
-  
-
    
 *********************************************************************/
 
@@ -125,6 +79,7 @@ BIGGEST BUG:
 #include <unistd.h>
 
 #include "main.h"
+#include "useful.h"
 #include "modelstruct.h"
 #include "emulator_struct.h"
 #include "multi_modelstruct.h"
@@ -219,9 +174,9 @@ int open_model_file(char * input_filename,
 	if (input_file == NULL)
 		return 0; /* failure */
 	int i, j, number_outputs, number_params, number_model_points;
-	fscanf(input_file,"%d%*c", & number_outputs);
-	fscanf(input_file,"%d%*c", & number_params);
-	fscanf(input_file,"%d%*c", & number_model_points);
+	number_outputs = read_integer(input_file);
+	number_params = read_integer(input_file);
+	number_model_points = read_integer(input_file);
 
 	assert(number_outputs > 0);
 	assert(number_params > 0);
@@ -232,10 +187,10 @@ int open_model_file(char * input_filename,
 	
 	for (i = 0; i < number_model_points; i++)
 		for (j = 0; j < number_params; j++)
-			fscanf(input_file, "%lf%*c", gsl_matrix_ptr(xmodel,i,j));
+			gsl_matrix_set(xmodel,i,j,read_double(input_file));
 	for (i = 0; i < number_model_points; i++)
 		for(j = 0; j < number_outputs; j++)
-			fscanf(input_file, "%lf%*c", gsl_matrix_ptr(training_matrix, i, j));
+			gsl_matrix_set(training_matrix,i,j,read_double(input_file));
 	
 	if (input_file != stdin)
 		fclose(input_file);
@@ -369,7 +324,7 @@ int estimate_thetas(struct cmdLineOpts* cmdOpts) {
 int interactive_mode (struct cmdLineOpts* cmdOpts) {
 	FILE * interactive_input = stdin;
 	FILE * interactive_output = stdout;
-	int i, r, expected_r;
+	int i, j, r, expected_r;
 
 	FILE * fp = fopen(cmdOpts->statefile,"r");
 	if (fp == NULL)
@@ -384,9 +339,22 @@ int interactive_mode (struct cmdLineOpts* cmdOpts) {
 	gsl_vector * the_point = gsl_vector_alloc(number_params);
 
 	int number_outputs = model->nt;
-	gsl_vector *the_mean = gsl_vector_alloc(number_outputs);
-	gsl_vector *the_variance = gsl_vector_alloc(number_outputs);
 
+	gsl_vector *the_mean = gsl_vector_alloc(number_outputs);
+	gsl_matrix *the_covariance = NULL;
+	gsl_vector *the_variance = NULL;
+
+	int use_pca = ( cmdOpts->pcaOutputFlag != 0); /* C-style boolean */
+
+	if(use_pca) { 
+		/* principal component output basis */
+		the_variance = gsl_vector_alloc(number_outputs);
+		assert (the_variance != NULL);
+	} else {
+		/* original output basis */
+		the_covariance = gsl_matrix_alloc(number_outputs, number_outputs);
+		assert (the_covariance != NULL);
+	}
 
 
 #ifdef BINARY_INTERACTIVE_MODE
@@ -402,50 +370,117 @@ int interactive_mode (struct cmdLineOpts* cmdOpts) {
 			fprintf(interactive_output,"%s%d\n","param_",i);
 		}
 
-	
-		int nreturns = 2 * number_outputs ; /* FIXME - also return the joint implausibility. */
-		fprintf(interactive_output,"%d\n",nreturns);
-		for(i = 0; i < number_outputs; i++) {
-			/* FIXME we may want output identifiers in the future. */
-			fprintf(interactive_output,"%s_%d\n%s_%d\n","mean",i,"variance",i);
+		if(use_pca) { 
+			/* PCA output basis */
+			/* number of return values = 2 * number_outputs*/
+			fprintf(interactive_output,"%d\n",2 * number_outputs);
+			for(i = 0; i < number_outputs; i++) {
+				/* FIXME we may want output identifiers in the future. */
+				fprintf(interactive_output,"%s_%d\n","pca_mean",i);
+			}
+			for(i = 0; i < number_outputs; i++) {
+				/* FIXME we may want output identifiers in the future. */
+				fprintf(interactive_output,"%s_%d\n","pca_variance",i);
+			}
+		} else {
+			/* original output basis */
+			/* number of return values = number_outputs + (number_outputs ** 2) */
+			fprintf(interactive_output,"%d\n",
+				number_outputs * (number_outputs + 1));
+			for(i = 0; i < number_outputs; i++) {
+				/* TODO: we may want output identifiers in the future. */
+				fprintf(interactive_output,"mean_%d\n",i);
+			}
+			for(i = 0; i < number_outputs; i++) {
+				for(j = 0; j < number_outputs; j++) {
+					fprintf(interactive_output,"covariance_%d_%d\n",i,j);
+				}
+			}
 		}
-
 		fflush(interactive_output);
 	}
 	
 	while (! feof(interactive_input)) {
 		for(i =0; (i < number_params) && (r == expected_r); i++) {
 			#ifdef BINARY_INTERACTIVE_MODE
-				r = fread(gsl_vector_ptr(the_point, i), sizeof(double), 1, interactive_input);
+				r = fread(gsl_vector_ptr(the_point, i), sizeof(double), 1,
+					interactive_input);
 			#else
 				r = fscanf(interactive_input, "%lf%*c", gsl_vector_ptr(the_point, i));
 			#endif
 		}
 		if (r < expected_r) /* probably eof, otherwise error */
 			break;
-		if(cmdOpts->pcaOutputFlag == 0){ 
-			emulate_point_multi(the_multi_emulator, the_point, the_mean, the_variance);
-		} else { /* support output in the pca space */
-			emulate_point_multi_pca(the_multi_emulator, the_point, the_mean, the_variance);
-		}
-		for(i = 0; i < number_outputs; i++) {
+		if(use_pca) { 
+			/* support output in the pca space */
+			assert (the_variance != NULL);
+			emulate_point_multi_pca(
+				the_multi_emulator, the_point, the_mean, the_variance);
+
 			#ifdef BINARY_INTERACTIVE_MODE
-				fwrite(gsl_vector_ptr(the_mean,i), sizeof(double), 1, interactive_output);
-				fwrite(gsl_vector_ptr(the_variance,i), sizeof(double), 1, interactive_output);
+				for(i = 0; i < number_outputs; i++) {
+					fwrite(gsl_vector_ptr(the_mean,i), sizeof(double), 1,
+						interactive_output);
+				}
+				for(i = 0; i < number_outputs; i++) {
+					fwrite(gsl_vector_ptr(the_variance,i), sizeof(double), 1,
+						interactive_output);
+				}
 			#else
-				fprintf(interactive_output, "%.17f\n", gsl_vector_get(the_mean,i));
-				fprintf(interactive_output, "%.17f\n", gsl_vector_get(the_variance,i));
+				for(i = 0; i < number_outputs; i++) {
+					fprintf(interactive_output, "%.17f\n", gsl_vector_get(the_mean,i));
+				}
+				for(i = 0; i < number_outputs; i++) {
+					fprintf(interactive_output, "%.17f\n", 
+						gsl_vector_get(the_variance,i));
+				}
+			#endif
+		} else {
+			/* NOT use_pca */
+			assert (the_covariance != NULL);
+			emulate_point_multi(
+				the_multi_emulator, the_point, the_mean, the_covariance);
+			#ifdef BINARY_INTERACTIVE_MODE
+				for(i = 0; i < number_outputs; i++) {
+					fwrite(gsl_vector_ptr(the_mean,i), sizeof(double), 1,
+						interactive_output);
+				}
+				for(i = 0; i < number_outputs; i++) {
+					for(j = 0; j < number_outputs; j++) {
+						fwrite(gsl_matrix_ptr(the_covariance,i,j), sizeof(double), 1,
+							interactive_output);
+					}
+				}
+			#else
+				for(i = 0; i < number_outputs; i++) {
+					fprintf(interactive_output, "%.17f\n", gsl_vector_get(the_mean,i));
+				}
+				for(i = 0; i < number_outputs; i++) {
+					for(j = 0; j < number_outputs; j++) {
+						fprintf(interactive_output, "%.17f\n", 
+							gsl_matrix_get(the_covariance,i,j));
+					}
+				}
 			#endif
 		}
 		fflush(interactive_output);
 	}
 
 	free_multi_emulator(the_multi_emulator);
-	// this is causing segfaults, i guess i dont understand the allocation pattern here properly
-	//free_multimodelstruct(model);
+	/* this is causing segfaults, i guess i dont understand the
+		 allocation pattern here properly.
+	   TODO: run valgrind. */
+	/* free_multimodelstruct(model); */
 	gsl_vector_free(the_point);
 	gsl_vector_free(the_mean);
-	gsl_vector_free(the_variance);
+
+	if(use_pca) { 
+		assert (the_variance != NULL);
+		gsl_vector_free(the_variance);
+	} else {
+		assert (the_covariance != NULL);
+		gsl_matrix_free(the_covariance);
+	}
 	return 0;
 }
 

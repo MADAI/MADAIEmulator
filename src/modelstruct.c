@@ -1,3 +1,4 @@
+#include "useful.h"
 #include "string.h"
 #include "assert.h"
 #include "math.h"
@@ -79,6 +80,8 @@ void dump_modelstruct(FILE *fptr, modelstruct* the_model, optstruct *opts){
 	
 }
 
+
+
 /**
  * load a model struct from fptr, we use the optstruct to allocate 
  * the fields in the supplied modelstruct before filling them
@@ -99,24 +102,20 @@ void load_modelstruct(FILE* fptr, modelstruct* the_model, optstruct* opts){
 
 	for(i = 0; i < nmp; i++){
 		for(j = 0; j < nparams; j++){
-			fscanf(fptr, "%lf ", &temp);
-			gsl_matrix_set(the_model->xmodel, i, j, temp);
+			gsl_matrix_set(the_model->xmodel, i, j, read_double(fptr));
 		}
 	}
 
 	for(i = 0; i < nmp; i++){
-		fscanf(fptr, "%lf ", &temp);
-		gsl_vector_set(the_model->training_vector, i, temp);
+		gsl_vector_set(the_model->training_vector, i, read_double(fptr));
 	}
 	
 	for(i = 0; i < nthetas; i++){
-		fscanf(fptr, "%lf ", &temp);
-		gsl_vector_set(the_model->thetas, i, temp);
+		gsl_vector_set(the_model->thetas, i, read_double(fptr));
 	}
 	
 	for(i = 0; i < nparams; i++){
-		fscanf(fptr, "%lf ", &temp);
-		gsl_vector_set(the_model->sample_scales, i, temp);
+		gsl_vector_set(the_model->sample_scales, i, read_double(fptr));
 	}
 
 }
@@ -423,44 +422,44 @@ modelstruct* load_modelstruct_2(FILE *fptr) {
 	int i,j;
 	int nparams, nmodel_points, nthetas;
 
-	fscanf(fptr, "%d%*c", & nthetas);
-	fscanf(fptr, "%d%*c", & nparams);
-	fscanf(fptr, "%d%*c", & nmodel_points);
+	nthetas = read_integer(fptr);
+	nparams = read_integer(fptr);
+	nmodel_points = read_integer(fptr);
 
 	model->options->nparams = nparams;
 	model->options->nmodel_points = nmodel_points;
 	model->options->nthetas = nthetas;
 
-	fscanf(fptr, "%d%*c", &(model->options->nemulate_points));
-	fscanf(fptr, "%d%*c", &(model->options->regression_order));
-	fscanf(fptr, "%d%*c", &(model->options->nregression_fns));
-	fscanf(fptr, "%d%*c", &(model->options->fixed_nugget_mode));
-	fscanf(fptr, "%lf%*c", &(model->options->fixed_nugget));
-	fscanf(fptr, "%d%*c", &(model->options->cov_fn_index));
-	fscanf(fptr, "%d%*c", &(model->options->use_data_scales));
+	model->options->nemulate_points = read_integer(fptr);
+	model->options->regression_order = read_integer(fptr);
+	model->options->nregression_fns = read_integer(fptr);
+	model->options->fixed_nugget_mode = read_integer(fptr);
+	model->options->fixed_nugget = read_double(fptr);
+	model->options->cov_fn_index = read_integer(fptr);
+	model->options->use_data_scales = read_integer(fptr);
 
 	model->options->grad_ranges = gsl_matrix_alloc(nthetas, 2);
 	for(i = 0; i < nthetas; i++) {
-		fscanf(fptr, "%lf%*c", gsl_matrix_ptr(model->options->grad_ranges,i,0));
-		fscanf(fptr, "%lf%*c", gsl_matrix_ptr(model->options->grad_ranges,i,1));
+		gsl_matrix_set(model->options->grad_ranges, i, 0, read_double(fptr));
+		gsl_matrix_set(model->options->grad_ranges, i, 1, read_double(fptr));
 	}
 
 	model->xmodel = gsl_matrix_alloc(nmodel_points, nparams);
 	for(i = 0; i < nmodel_points; i++)
 		for(j = 0; j < nparams; j++)
-			fscanf(fptr, "%lf%*c", gsl_matrix_ptr(model->xmodel, i, j));
+			gsl_matrix_set(model->xmodel, i, j, read_double(fptr));
 
 	model->training_vector = gsl_vector_alloc(nmodel_points);
 	for(i = 0; i < nmodel_points; i++)
-		fscanf(fptr, "%lf%*c", gsl_vector_ptr(model->training_vector, i));
+		gsl_vector_set(model->training_vector, i, read_double(fptr));
 
 	model->thetas = gsl_vector_alloc(nthetas);
 	for(i = 0; i < nthetas; i++)
-		fscanf(fptr, "%lf%*c", gsl_vector_ptr(model->thetas, i));
+		gsl_vector_set(model->thetas, i, read_double(fptr));
 
 	model->sample_scales = gsl_vector_alloc(nparams);
 	for(i = 0; i < nparams; i++)
-		fscanf(fptr, "%lf%*c", gsl_vector_ptr(model->sample_scales, i));
+		gsl_vector_set(model->sample_scales, i, read_double(fptr));
 
 	set_global_ptrs(model);
 	return model;

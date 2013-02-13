@@ -32,7 +32,7 @@ R (http://www.r-project.org/) (for using the R lib)
 
 Compiling:
 
-./build.sh
+  $ ./build.sh
 
 On OS-X you need to set the following environment variables:
 
@@ -43,97 +43,33 @@ Otherwise R will complain when you try and load libRbind.dylib
 
 ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
 
-Interactive Emulator:
+For details on how to use the interactive_emulator, consult the
+manpage via:
 
-  useage: 
-    interactive_emulator estimate_thetas INPUT_MODEL_FILE MODEL_SNAPSHOT_FILE [OPTIONS]
-  or
-    interactive_emulator interactive_mode MODEL_SNAPSHOT_FILE
-  or 
-    interactive_emulator print_thetas MODEL_SNAPSHOT_FILE
+  $ nroff -man < [PATH_TO/]interactive_emulator.1 | less
 
-  estimate_thetas -> train an emulator on a given set of model
-	outputs, all the information needed to use the emulator is
-	written to MODEL_SNAPSHOT_FILE
+or, if the manual is installed:
 
-	interactive_mode -> sample the emulator contained in
-	MODEL_SNAPSHOT_FILE at a set of points given on STDIN, the
-	emulated mean and variance are output to STDOUT
-
-	print_thetas -> write out the covariance length scales for the
-	emulator given by MODEL_SNAPSHOT_FILE
-		
-  INPUT_MODEL_FILE can be "-" to read from standard input.
-
-  The input MODEL_SNAPSHOT_FILE for interactive_mode must match the
-  format of the output MODEL_SNAPSHOT_FILE from estimate_thetas.
-
-  Options for estimate_thetas can include:
-    --regression_order=0
-    --regression_order=1
-    --regression_order=2
-    --regression_order=3
-    --covariance_fn=0 (POWER_EXPONENTIAL)
-    --covariance_fn=1 (MATERN32)
-    --covariance_fn=2 (MATERN52)
-	  (-v=FRAC) --pca_variance=FRAC : sets the pca decomp to keep cpts up to variance fraction frac
-	 options which incluence interactive_mode:
-	 (-q) --quiet: run without any extraneous output
-	 (-z) --pca_output: emulator output is left in the pca space
-   general options:
-	  -h -? print the help dialogue
-
-  The defaults are regression_order=0 and covariance_fn=POWER_EXPONENTIAL.
-
-  These options will be saved in MODEL_SNAPSHOT_FILE.
-
-INPUT_MODEL_FILE (With multi-output) FORMAT:
-
-  Models with multivariate output values y = y_1...y_t which we will
-  think of as rows of a matrix, in the following spec
-
-  number_outputs = t
-  BEGIN EXAMPLE
-    number_outputs
-    number_params 
-    number_model_points
-    X[0,0]
-    ...
-    X[0,number_params-1]
-    X[1,0]
-    ...
-    X[number_model_points-1,number_params-1]
-    Y[0, 0]
-    Y[0, 1]
-    ...
-    Y[0, number_outputs-1]
-    ...
-    Y[1, 1]
-    ... 
-    Y[number_model_points-1, number_outputs-1]
-   END EXAMPLE
-
-  number_outputs, number_params and number_model_points should be
-  positive integers.  X[i,j] and Y[i,j] will be read as
-  double-precision floats.
+  $ man 1 interactive_emulator
 
 ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
 
 Example Analysis Using Interactive Emulator: 
- Several example analysis setups can be found in the test directory:
- 
- ./test/uni-simple -> a test model with a single parameter and a 1 dimensional output
 
- ./test/uni-2d-param -> a test model with a 2 dimensional parameter
+Several example analysis setups can be found in the test directory:
+ 
+ $ ./test/uni-simple -> a test model with a single parameter and a 1 dimensional output
+
+ $ ./test/uni-2d-param -> a test model with a 2 dimensional parameter
                         space and a 1 dimensional output
 
- ./test/multi-simple -> a test model with a 3 dimensional parameter
+ $ ./test/multi-simple -> a test model with a 3 dimensional parameter
                         space and a 5 dimensional output
 
- Each example in test has a script train-emulator.sh which will build
- an emulator based on that particular model, the emulator can then be
- sampled using sample-emulator.sh and figures can be built using the
- enclosed R files.
+Each example in test has a script train-emulator.sh which will build
+an emulator based on that particular model, the emulator can then be
+sampled using sample-emulator.sh and figures can be built using the
+enclosed R files.
 	
 
 ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=

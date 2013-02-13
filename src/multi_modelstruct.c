@@ -1,5 +1,6 @@
 #include "multi_modelstruct.h"
 #include "multivar_support.h"
+#include "useful.h"
 
 #include <math.h>
 #include <assert.h>
@@ -218,7 +219,7 @@ void gen_pca_decomp(multi_modelstruct *m, double vfrac)
 		exit(EXIT_FAILURE);
 	}
 
-	
+
 	gsl_matrix_scale(y_cov_mat, (1.0/((double)m->nmodel_points)));
 
 	/**
@@ -246,7 +247,7 @@ void gen_pca_decomp(multi_modelstruct *m, double vfrac)
 	gsl_eigen_symmv(y_cov_mat, evals_temp, evecs_temp, ework); 
 	gsl_eigen_symmv_sort(evals_temp, evecs_temp, GSL_EIGEN_SORT_VAL_DESC);
 	/**
-	 * eigenvectors are stored in columns of pca_evecs*/
+	 * eigenvectors are stored in columns of pca_evecs */
 	total_variance = vector_elt_sum(evals_temp, nt);
 
 	
@@ -414,12 +415,12 @@ multi_modelstruct *load_multi_modelstruct(FILE* fptr){
 	double mean_temp;
 	gsl_vector_view col_view;
 
-	fscanf(fptr, "%d%*c", & nt);
-	fscanf(fptr, "%d%*c", & nr);
-	fscanf(fptr, "%d%*c", & nparams);
-	fscanf(fptr, "%d%*c", & nmodel_points);
-	fscanf(fptr, "%d%*c", & cov_fn_index);
-	fscanf(fptr, "%d%*c", & regression_order);
+	nt = read_integer(fptr);
+	nr = read_integer(fptr);
+	nparams = read_integer(fptr);
+	nmodel_points = read_integer(fptr);
+	cov_fn_index = read_integer(fptr);
+	regression_order = read_integer(fptr);
 	
 	m->nt = nt;
 	m->nr = nr;
@@ -440,23 +441,23 @@ multi_modelstruct *load_multi_modelstruct(FILE* fptr){
 
 	for(i = 0; i < nmodel_points; i++)
 		for(j = 0; j < nparams; j++)
-			fscanf(fptr, "%lf%*c", gsl_matrix_ptr(m->xmodel, i, j));
+			gsl_matrix_set(m->xmodel, i, j, read_double(fptr));
 	
 	for(i = 0; i < nmodel_points; i++)
 		for(j = 0; j < nt; j++)
-			fscanf(fptr, "%lf%*c", gsl_matrix_ptr(m->training_matrix, i, j));
+			gsl_matrix_set(m->training_matrix, i, j, read_double(fptr));
 	
 	// now the rest of the pca information
 	for(i = 0; i < nr; i++)
-			fscanf(fptr, "%lf%*c", gsl_vector_ptr(m->pca_evals_r, i));
+		gsl_vector_set(m->pca_evals_r, i, read_double(fptr));
 
 	for(i = 0; i < nt; i++)
 		for(j = 0; j < nr; j++)
-			fscanf(fptr, "%lf%*c", gsl_matrix_ptr(m->pca_evecs_r, i, j));
+			gsl_matrix_set(m->pca_evecs_r, i, j, read_double(fptr));
 
 	for(i = 0; i < nmodel_points; i++)
 		for(j = 0; j < nr; j++)
-			fscanf(fptr, "%lf%*c", gsl_matrix_ptr(m->pca_zmatrix, i, j));
+			gsl_matrix_set(m->pca_zmatrix, i, j, read_double(fptr));
 	
 	for(i = 0; i < nr; i++)
 		m->pca_model_array[i] = load_modelstruct_2(fptr);

@@ -4,6 +4,7 @@
 #include "libEmu/emulator.h"
 #include "libEmu/regression.h"
 #include "libEmu/maxmultimin.h"
+#include "useful.h"
 
 void free_optstruct(optstruct *opts){
 	gsl_matrix_free(opts->grad_ranges);
@@ -273,6 +274,7 @@ void dump_optstruct(FILE *fptr, optstruct* opts){
 	
 }
 
+
 /**
  * reads the fptr into an optstruct, we have to allocate the grad_ranges matrix
  * when we do this
@@ -280,24 +282,25 @@ void dump_optstruct(FILE *fptr, optstruct* opts){
 void load_optstruct(FILE *fptr, optstruct* opts){
 	int i; 
 	double rlow, rhigh;
-	fscanf(fptr, "%d", &opts->nthetas);
-	fscanf(fptr, "%d", &opts->nthetas);
-	fscanf(fptr, "%d", &opts->nparams);
-	fscanf(fptr, "%d", &opts->nmodel_points);
-	fscanf(fptr, "%d", &opts->nemulate_points);
-	fscanf(fptr, "%d", &opts->regression_order);
-	fscanf(fptr, "%d", &opts->nregression_fns);
-	fscanf(fptr, "%d", &opts->fixed_nugget_mode);
-	fscanf(fptr, "%lf", &opts->fixed_nugget);
-	fscanf(fptr, "%d", &opts->cov_fn_index);
-	fscanf(fptr, "%d", &opts->use_data_scales);
 	
+	opts->nthetas = read_integer(fptr);
+	opts->nthetas = read_integer(fptr);
+	opts->nparams = read_integer(fptr);
+	opts->nmodel_points = read_integer(fptr);
+	opts->nemulate_points = read_integer(fptr);
+	opts->regression_order = read_integer(fptr);
+	opts->nregression_fns = read_integer(fptr);
+	opts->fixed_nugget_mode = read_integer(fptr);
+	opts->fixed_nugget = read_double(fptr);
+	opts->cov_fn_index = read_integer(fptr);
+	opts->use_data_scales = read_integer(fptr);
 	
 	// allocate the grad_ranges matrix
 	opts->grad_ranges = gsl_matrix_alloc(opts->nthetas, 2);
 
 	for(i = 0; i < opts->nthetas; i++){
-		fscanf(fptr, "%lf\t%lf", &rlow, &rhigh);
+		rlow = read_double(fptr);
+		rhigh = read_double(fptr);
 		gsl_matrix_set(opts->grad_ranges, i, 0, rlow);
 		gsl_matrix_set(opts->grad_ranges, i, 1, rhigh);
 	}
