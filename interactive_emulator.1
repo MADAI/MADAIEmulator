@@ -10,8 +10,8 @@ interactive_emulator \- train, sample and query a Gaussian Process emulator
 .SH DESCRIPTION
 interactive_emulator is an all in one program for training and sampling a gaussian process emulator. The format of the input MODEL_SNAPSHOT_FILE for interactive_mode must match the format of the output MODEL_SNAPSHOT_FILE from estimate_thetas
 .SH estimate_thetas INPUT_MODEL_FILE MODEL_SNAPSHOT_FILE [OPTIONS]
-Estimate_thetas trains an emulator on the given INPUT_MODEL_FILE producing a MODEL_SNAPSHOT_FILE that can be used for sampling the emulator at a later date. 
-.P 
+Estimate_thetas trains an emulator on the given INPUT_MODEL_FILE producing a MODEL_SNAPSHOT_FILE that can be used for sampling the emulator at a later date.
+.P
 Options which influence estimate_thetas are:
  --regression_order=0 (const)
  \--regression_order=1 (linear)
@@ -29,7 +29,7 @@ Options which influence interactive_mode:
 The trained emulator represented by MODEL_SNAPSHOT_FILE is sampled at locations given on STDIN, as:
 .P
  X_sample[0] ... X_sample[number_params-1]
-.P 
+.P
 Normally the number_outputs dimensional emulator mean and covariance matrix are output on STDOUT as:
 .P
  E[ Y(X_sample)[0] ]
@@ -59,29 +59,46 @@ This option does not produce a covariance matrix: only a variance for each PCA d
 
 .SH print_thetas MODEL_SNAPSHOT_FILE
 Output to STDOUT the length scales for the covariance function as estimated by estimate_thetas. The pca-transformed design + training data for each principle component emulator is written to pca_emu_summary_<index>.dat where index runs from 0,...,number_outputs-1.
-.P 
+.P
 The pca_emu_summary_<index>.dat files are laid out as
  X[0, 0] X[0,1] ... X[0, nparams-1] Y_pca_<index>[0]
  X[1, 0] X[1,1] ... X[1, nparams-1] Y_pca_<index>[1]
- ... 
+ ...
  X[N-1, 0] X[N-1,1] ... X[N-1, nparams-1] Y_pca_<index>[N-1]
 Where N = number_model_points in the above.
 .SH INPUT_MODEL_FILE format
-An input model is specified interms of the locations in the parameter (design) space where it was sampled and the values of the model produced at these locations. 
-.I 
+An input model is specified interms of the locations in the parameter (design) space where it was sampled and the values of the model produced at these locations.
+.I
  number_outputs
 The dimension of the output vector we wish to emulate, y_out = y_1...y_t
-.I 
+.I
  number_params
-The dimension of the parameter space we are moving around in 
-.I 
+The dimension of the parameter space we are moving around in
+.I
  number_model_points
 The number of samples of the model (y_out) we've taken through the number_params dimensional parameter_space.
 .P
 In the following example we label the design data as X and the training data as Y.
   BEGIN EXAMPLE
+    VERSION 1
+    PARAMETERS
+    number_params
+    parameter_0_name
+    parameter_0_min
+    parameter_0_max
+    parameter_1_name
+    parameter_1_min
+    parameter_1_max
+    ...
+    parameter_[number_params-1]_name
+    parameter_[number_params-1]_min
+    parameter_[number_params-1]_max
+    OUTPUTS
     number_outputs
-    number_params 
+    output_0_name
+    output_1_name
+    ...
+    output_[number_params-1]_name
     number_model_points
     X[0,0]
     ...
@@ -95,12 +112,11 @@ In the following example we label the design data as X and the training data as 
     Y[0, number_outputs-1]
     ...
     Y[1, 1]
-    ... 
+    ...
     Y[number_model_points-1, number_outputs-1]
    END EXAMPLE
 .P
-number_outputs, number_params and number_model_points should be positive integers.  X[i,j] and Y[i,j] will be read as double-precision floats.
-
+number_outputs, number_params and number_model_points should be positive integers.  X[i,j] and Y[i,j] will be read as double-precision floats.  Parameter names should contain no whitespace.  Ranges are floating-point numbers.
 .SH BUGS
 Don't believe anything this tells you without a lot of testing.
 .SH AUTHORS
