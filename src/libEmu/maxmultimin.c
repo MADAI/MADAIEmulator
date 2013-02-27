@@ -419,14 +419,13 @@ void gradFnMulti(const gsl_vector* theta_vec_less_amp, void* params_in, gsl_vect
 	double amp = 0.0, nug = 0.0; 
 	double sigma_est = 0.0;
 	double grad_temp = 0.0;
-	int nthetas_opt;
-
+	/*int nthetas_opt;*/
 
 	struct estimate_thetas_params *params = (struct estimate_thetas_params*)params_in;
 	nmpoints = params->options->nmodel_points;
 	nthetas = params->options->nthetas;
 	nparams = params->options->nparams;
-	nthetas_opt = nthetas - 1; // we optimize one less than we actually have
+	//nthetas_opt = nthetas - 1; // we optimize one less than we actually have
 
 	int cholesky_test;
 	gsl_error_handler_t *temp_handler;
@@ -539,7 +538,7 @@ void gradFnMulti(const gsl_vector* theta_vec_less_amp, void* params_in, gsl_vect
 
 
 	/* printf("# gradient: "); */
-	/* for(i = 0; i < nthetas_opt; ++i) */
+	/* for(i = 0; i < (nthetas - 1); ++i) */
 	/* 	printf("%g ", gsl_vector_get(grad_vec,i)); */
 	/* printf("\n"); */
 
@@ -649,7 +648,7 @@ int doOptimizeMultiMin( double(*fn)(const gsl_vector*, void*),													\
 
 	double stepSizeInit = 1.5;
 	double tolerance = 0.5; // sets the accuracy of the line search. 
-	double fnValue = 0.0;
+	/* double fnValue = 0.0; */
 	/*
 	 * we stop when |g| < epsAbs, not sure how to set this yet
 	 */
@@ -708,13 +707,14 @@ int doOptimizeMultiMin( double(*fn)(const gsl_vector*, void*),													\
 			break;
 		}
 
-		fnValue = gsl_multimin_fdfminimizer_minimum(fdfmin);
 		tempTest = gsl_multimin_fdfminimizer_gradient(fdfmin);
 
 
 		#ifdef DEBUGMAXMULTIMIN
 		/* // output current info */
-		fprintf(stderr, "#(%d) f: %lf x:", stepcount, fnValue);
+		/* fnValue = gsl_multimin_fdfminimizer_minimum(fdfmin); */
+		fprintf(stderr, "#(%d) f: %lf x:", stepcount, 
+						gsl_multimin_fdfminimizer_minimum(fdfmin));
 		for (i = 0; i < nthetas_opt; ++i)
 			fprintf(stderr, "%lf ", gsl_vector_get(fdfmin->x, i));
 		fprintf(stderr, "#grad: ");
@@ -738,9 +738,9 @@ int doOptimizeMultiMin( double(*fn)(const gsl_vector*, void*),													\
 	if(stepcount == stepmax)
 		fprintf(stderr, "# (error) multimin: no converge at stepmax %d\n", stepmax);
 
-	fnValue = gsl_multimin_fdfminimizer_minimum(fdfmin);
 
 	#ifdef DEBUGMAXMULTIMIN
+	/* fnValue = gsl_multimin_fdfminimizer_minimum(fdfmin); */
 	fprintf(stderr, "status: %s\n", gsl_strerror(status));
 	/* fprintf(stderr, "#multimin: best_value %lf\n", fnValue); */
 	#endif

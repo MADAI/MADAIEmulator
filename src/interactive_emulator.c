@@ -371,7 +371,7 @@ int interactive_mode (struct cmdLineOpts* cmdOpts) {
         Then we will serialize it as:
             1 2 3 4 5 6 7 8 9 0 a b c d e f
         To save time.
-       */
+			*/
       fprintf(interactive_output, "%d\n",
         (number_outputs * (number_outputs + 1)) / 2 );
     }
@@ -435,7 +435,7 @@ int interactive_mode (struct cmdLineOpts* cmdOpts) {
           fprintf(interactive_output, "%.17f\n", gsl_vector_get(the_mean,i));
         }
         for(i = 0; i < number_outputs; i++) {
-          for(j = 1; j < number_outputs; j++) {
+          for(j = i; j < number_outputs; j++) {
             fprintf(interactive_output, "%.17f\n",
               gsl_matrix_get(the_covariance,i,j));
           }

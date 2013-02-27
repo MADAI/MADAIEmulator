@@ -91,7 +91,7 @@ void load_modelstruct(FILE* fptr, modelstruct* the_model, optstruct* opts){
 	int nmp = opts->nmodel_points;
 	int nthetas = opts->nthetas;
 	int i,j;
-	double temp;
+	/* double temp; */
 	
 	// allocate everything first
 	the_model->xmodel = gsl_matrix_alloc(nmp, nparams);

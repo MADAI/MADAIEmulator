@@ -231,23 +231,21 @@ void setup_optimization_ranges(optstruct* options, modelstruct* the_model)
 	 * debug info
 	 * print the ranges, this is annoying
 	 */
-	
+	#ifdef DEBUGGRADRANGES
 	double low, high;
-	printf("# grad ranges (logged):\n");
+	fprintf(stderr,"# grad ranges (logged):\n");
 	for(i = 0; i < options->nthetas; i++){
-			low = gsl_matrix_get(options->grad_ranges, i, 0);
-			high = gsl_matrix_get(options->grad_ranges, i, 1);
-		
+		low = gsl_matrix_get(options->grad_ranges, i, 0);
+		high = gsl_matrix_get(options->grad_ranges, i, 1);
 		if(i == 0){
-			printf("# %d ranges: %lf %lf (scale)\n", i, low, high);
+			fprintf(stderr,"# %d ranges: %lf %lf (scale)\n", i, low, high);
 		} if (i == 1){
-			printf("# %d ranges: %lf %lf (nugget)\n", i, low, high);
+			fprintf(stderr,"# %d ranges: %lf %lf (nugget)\n", i, low, high);
 		} else if (i > 1) {
-			printf("# %d ranges: %lf %lf\n", i, low, high);
+			fprintf(stderr,"# %d ranges: %lf %lf\n", i, low, high);
 		}
 	}
-
-
+	#endif
 }
 
 /** 

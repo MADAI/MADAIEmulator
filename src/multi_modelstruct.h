@@ -144,6 +144,11 @@ typedef struct multi_modelstruct{
    */
   gsl_matrix *pca_zmatrix;
 
+  /**
+   * The number of parameters in the covariance fn.
+   * Its value is a function of cov_fn_index and nparams.
+   */
+	int number_thetas;
 } multi_modelstruct;
 
 multi_modelstruct* alloc_multimodelstruct(gsl_matrix *xmodel_in, gsl_matrix *training_matrix_in,

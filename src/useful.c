@@ -133,9 +133,10 @@ int check_word_is(FILE *fptr, const char * str) {
 char ** allocate_string_array(int size) {
   assert(size >= 0);
   char ** r = (char **)malloc((size + 1) * sizeof(char*));
-  if (r == NULL)
+  if (r == NULL) {
     perror("malloc");
-  return NULL;
+		return NULL;
+	}
   r[size] = NULL;
   return r;
 }

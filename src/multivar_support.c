@@ -147,6 +147,9 @@ void emulate_point_multi(multi_emulator *emu, gsl_vector *the_point,
 	 */
 	int k;
 	gsl_vector_set_zero(temp);
+	/* for (k = 0; k < nr; k++) { */
+	/* 	printf("var[%d] = %.17f\n",k,gsl_vector_get(var_pca, k)); */
+	/* } */
 	for (i = 0; i < nt; i++) {
 		for (j = 0; j < nt; j++) {
  			vec_mat_sum = 0.0;

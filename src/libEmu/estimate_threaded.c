@@ -37,6 +37,22 @@ double best_likelyhood_val = SCREWUPVALUE;
  * end of global section
  */
 
+#define fprintPt(fptr, pthread) fprintf((fptr),"0x%lx",(pthread))
+/* /\** */
+/*  * from stackoverflow. */
+/*  * print pthread id in a nice way? */
+/*  * well if you like hex anyway... */
+/*  *\/ */
+/* void fprintPt(FILE *f, pthread_t pt) { */
+/*   unsigned char *ptc = (unsigned char*)(void*)(&pt); */
+/*   fprintf(f, "0x"); */
+/* 	size_t i; */
+/*   for (i=0; i<sizeof(pt); i++) { */
+/*     fprintf(f, "%02x", (unsigned)(ptc[i])); */
+/*   } */
+/* } */
+
+
 int get_number_cpus(void){
 	int ncpus = 0;
 	/* now try and find the number of threads by seeing how many cpus we have */
@@ -44,7 +60,10 @@ int get_number_cpus(void){
 	if(ncpus == -1){
 		ncpus = 1;
 	}
-	printf("# NCPUS: %d\n", ncpus);
+
+	#ifdef DEBUGESTIMATETHREADED
+	fprintf(stderr,"# NCPUS: %d\n", ncpus);
+	#endif
 	return(ncpus);
 }
 
@@ -76,7 +95,7 @@ void setup_params(struct estimate_thetas_params *params_array, modelstruct* the_
  * Spinlocks are slightly faster
  */
 void estimate_thetas_threaded(modelstruct* the_model, optstruct* options){
-	int i, j;
+	int i;
 	int rc = 0; 
 	/* thread data */
 	/* \bug
@@ -196,16 +215,22 @@ void estimate_thetas_threaded(modelstruct* the_model, optstruct* options){
 	pthread_spin_destroy(&results_spin);
 	#endif
 
+	#ifdef DEBUGESTIMATETHREADED
 	// check the local best values from the threads
-	printf("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n");
+	char delim[]
+		= "-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
+	fprintf(srderr,delim);
 	for(i = 0; i < nthreads; i++){
-		printf("thread(%d)\tlog-L: %lf\tthetas:", i, params[i].my_best);
+		fprintf(srderr,"thread(%d)\tlog-L: %lf\tthetas:", i, params[i].my_best);
+		int j;
 		for(j = 0; j < params[i].options->nthetas; j++)
-			printf("%lf ", exp(gsl_vector_get(params[i].the_model->thetas, j)));
-		printf("\n");
+			fprintf(srderr,"%lf ",
+				exp(gsl_vector_get(params[i].the_model->thetas, j)));
+		fprintf(srderr,"\n");
 	}
-	printf("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n");
-		
+	fprintf(srderr,delim);
+	#endif
+	
 	/* fprintf(stderr, "final best L: %g\n", best_likelyhood_val); */
 	/* fprintf(stderr, "THETAS WE WILL USE: \t"); */
 	/* print_vector_quiet(best_thetas, options->nthetas); */
@@ -241,7 +266,9 @@ void* estimate_thread_function(void* args){
 	struct estimate_thetas_params *params = (struct estimate_thetas_params*) args;
 	int next_job;
 	int rc;
+	#ifdef DEBUGESTIMATETHREADED
 	pthread_t my_id = pthread_self();
+	#endif
 	double my_theta_val = 0.0; /* this is the goodness of your current evaluation */
 	while(1){
 		/* see if we've done enough */
@@ -311,10 +338,11 @@ void* estimate_thread_function(void* args){
 			// save the new best too
 			best_likelyhood_val = my_theta_val;
 			
-			printf("# ");
-			fprintPt(stdout, my_id);
-			printf(" won with %g\n",  my_theta_val);
-			
+			#ifdef DEBUGESTIMATETHREADED
+			fprintf(stderr,"# ");
+			fprintPt(stderr, my_id);
+			fprintf(stderr," won with %g\n",  my_theta_val);
+			#endif			
 		}
 		#ifdef USEMUTEX
 		pthread_mutex_unlock(&results_mutex);
@@ -327,22 +355,12 @@ void* estimate_thread_function(void* args){
 
 	}
 	// and relax...
-	printf("# thread: ");
-	fprintPt(stdout, my_id);
-	printf(" is done\n");
+	#ifdef DEBUGESTIMATETHREADED
+	fprintf(stderr,"# thread: ");
+	fprintPt(stderr, my_id);
+	fprintf(stderr," is done\n");
+	#endif
 	return NULL;
 }
 
-/**
- * from stackoverflow.
- * print pthread id in a nice way?
- * well if you like hex anyway...
- */
-void fprintPt(FILE *f, pthread_t pt) {
-  unsigned char *ptc = (unsigned char*)(void*)(&pt);
-  fprintf(f, "0x");
-	size_t i;
-  for (i=0; i<sizeof(pt); i++) {
-    fprintf(f, "%02x", (unsigned)(ptc[i]));
-  }
-}
+

@@ -32,9 +32,7 @@ mkscpt() {
         EXE="${1}/bin/$2"
         SCPT="${1}/bin/run_${2}"
         {       echo '#!/bin/sh'
-                echo "LD_LIBRARY_PATH=\"${LIB_PATH}\""
-                echo "export LD_LIBRARY_PATH"
-                echo "exec \"${EXE}\" \"\$@\""
+                echo "LD_LIBRARY_PATH=\"${LIB_PATH}\" exec \"${EXE}\" \"\$@\""
         } > "$SCPT"
         chmod +x "$SCPT"
         echo "created \"${SCPT}\"."

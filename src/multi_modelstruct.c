@@ -73,6 +73,9 @@ multi_modelstruct* alloc_multimodelstruct(gsl_matrix *xmodel_in,
   assert(training_matrix_in->size2 > 0);
   assert(xmodel_in->size2 > 0);
 
+	assert((0.0 <= varfrac) && (varfrac <= 1.0));
+	assert((0 <= cov_fn_index) && (cov_fn_index <= 3));
+	assert((0 <= regression_order) && (regression_order <= 3));
 
   int i;
   double mean_temp = 0.0;
@@ -90,17 +93,6 @@ multi_modelstruct* alloc_multimodelstruct(gsl_matrix *xmodel_in,
   if(varfrac < 0 || varfrac > 1)
     varfrac = 0.95;
 
-  /* ntheta is a function of cov_fn_index and nparams */
-  int nthetas;
-  if ((cov_fn_index == MATERN32) || (cov_fn_index == MATERN52)) {
-    nthetas = 3;
-  } else if (cov_fn_index == POWEREXPCOVFN) {
-    nthetas = nparams + 2;
-  } else {
-    cov_fn_index = POWEREXPCOVFN;
-    nthetas = nparams + 2;
-  }
-
   // this doesn't seem to be allocating correctly, seems to be a broken defn of MallocChecked
   // strangely, code will build in this case...
   //multi_modelstruct * model = (multi_modelstruct*)MallocChecked(sizeof(multi_modelstruct));
@@ -116,6 +108,10 @@ multi_modelstruct* alloc_multimodelstruct(gsl_matrix *xmodel_in,
   model->training_mean = gsl_vector_alloc(nt);
   model->regression_order = regression_order;
   model->cov_fn_index = cov_fn_index;
+
+  /* ntheta is a function of cov_fn_index and nparams */
+  model->number_thetas = (cov_fn_index == POWEREXPCOVFN) ? (nparams + 2) : 3;
+
 
   /* fill in the mean vector, should probably sum this more carefully... */
   for(i = 0; i < nt; i++){
@@ -224,7 +220,9 @@ void gen_pca_decomp(multi_modelstruct *m, double vfrac)
   // subtract out the mean
   for(i = 0; i < nt; i++){
     //col_view = gsl_matrix_column(y_sub_mat, i);
-    printf("# y(%d) mean: %lf\n", i, gsl_vector_get(m->training_mean, i));
+		#ifdef DEBUGPCA
+    fprintf(stderr,"# y(%d) mean: %lf\n", i, gsl_vector_get(m->training_mean, i));
+		#endif
     for(j = 0; j < m->nmodel_points; j++){
       gsl_matrix_set(y_sub_mat, j, i, gsl_matrix_get(y_sub_mat, j, i) - gsl_vector_get(m->training_mean, i));
     }
@@ -307,7 +305,9 @@ void gen_pca_decomp(multi_modelstruct *m, double vfrac)
   m->pca_evals_r = gsl_vector_alloc(m->nr);
   m->pca_evecs_r = gsl_matrix_alloc(m->nt, m->nr);
   // debug...
+  #ifdef DEBUGPCA
   fprintf(stderr, "# nr: %d frac: %lf\n", m->nr, frac);
+  #endif
 
   for(i = 0; i < m->nr; i++){
     gsl_vector_set(m->pca_evals_r, i, gsl_vector_get(evals_temp, i));
@@ -416,7 +416,7 @@ void dump_multi_modelstruct(FILE* fptr, multi_modelstruct *m){
  * loads a multivariate modelstructure from fptr
  */
 multi_modelstruct *load_multi_modelstruct(FILE* fptr){
-  int i,j;
+  int i;
   int number_of_outputs, number_of_pca_outputs;
   int nparams, nmodel_points;
   int cov_fn_index;
@@ -478,6 +478,7 @@ multi_modelstruct *load_multi_modelstruct(FILE* fptr){
   m->output_names = output_names;
   m->parameter_minima = parameter_minima;
   m->parameter_maxima = parameter_maxima;
+  m->number_thetas = (cov_fn_index == POWEREXPCOVFN) ? (nparams + 2) : 3;
 
   // now we can allocate everything in m
   m->xmodel = gsl_matrix_alloc(nmodel_points, nparams);
@@ -534,7 +535,7 @@ void free_multimodelstruct(multi_modelstruct *m)
   free_string_array(m->parameter_names);
   free_string_array(m->output_names);
   free(m->parameter_minima);
-  free(m->parameter_minima);
+  free(m->parameter_maxima);
   gsl_vector_free(m->training_mean);
   for(i = 0; i < m->nr; i++){
     free_modelstruct_2(m->pca_model_array[i]);
