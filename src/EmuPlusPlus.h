@@ -84,6 +84,26 @@ class emulator{
 	 */
 	int getNumberOfPCAOutputs() const { return this->the_model->nr; }
 
+	/**
+	 * FIXME: description
+	 */
+	const char * getParameterName(int index) const;
+
+	/**
+	 * FIXME: description
+	 */
+	double getParameterMinimum(int index) const;
+
+	/**
+	 * FIXME: description
+	 */
+	double getParameterMaximum(int index) const;
+
+	/**
+	 * FIXME: description
+	 */
+	const char * getOutputName(int index) const;
+
  private:
 	std::string StateFilePath;
 	multi_modelstruct *the_model;  // the c structure which defines the model

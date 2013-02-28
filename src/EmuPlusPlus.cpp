@@ -267,3 +267,43 @@ emulator::~emulator(){
 }
 
 
+
+/**
+ * FIXME: description
+ */
+const char * emulator::getParameterName(int i) const {
+	if ((i < 0) || (i > this->getNumberOfParameters()))
+		return "ERROR";
+	assert(this->the_model->parameter_names != NULL);
+	return this->the_model->parameter_names[i];
+}
+
+/**
+ * FIXME: description
+ */
+double emulator::getParameterMinimum(int i) const {
+	if ((i < 0) || (i > this->getNumberOfParameters()))
+		return -1234.56;
+	assert(this->the_model->parameter_minima != NULL);
+	return this->the_model->parameter_minima[i];
+}
+
+/**
+ * FIXME: description
+ */
+double emulator::getParameterMaximum(int i) const {
+	if ((i < 0) || (i > this->getNumberOfParameters()))
+		return 1234.56;
+	assert(this->the_model->parameter_maxima != NULL);
+	return this->the_model->parameter_maxima[i];
+}
+
+/**
+ * FIXME: description
+ */
+const char * emulator::getOutputName(int i) const {
+	if ((i < 0) || (i > this->getNumberOfOutputs()))
+		return "ERROR";
+	assert(this->the_model->output_names != NULL);
+	return this->the_model->output_names[i];
+}
