@@ -307,3 +307,10 @@ const char * emulator::getOutputName(int i) const {
 	assert(this->the_model->output_names != NULL);
 	return this->the_model->output_names[i];
 }
+
+/**
+ * FIXME: description
+ */
+bool emulator::IsOkay() const {
+	return ((this->the_model != NULL) && (this->the_emulator != NULL));
+}

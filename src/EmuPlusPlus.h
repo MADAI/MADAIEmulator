@@ -104,6 +104,11 @@ class emulator{
 	 */
 	const char * getOutputName(int index) const;
 
+	/**
+	 * FIXME: description
+	 */
+	bool IsOkay() const;
+
  private:
 	std::string StateFilePath;
 	multi_modelstruct *the_model;  // the c structure which defines the model
