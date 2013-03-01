@@ -130,9 +130,12 @@ static const char useage [] =
   "  --regression_order=1 (linear)\n"
   "  --regression_order=2 (quadratic)\n"
   "  --regression_order=3 (cubic)\n"
-  "  --covariance_fn=0 (POWER_EXPONENTIAL)\n"
-  "  --covariance_fn=1 (MATERN32)\n"
-  "  --covariance_fn=2 (MATERN52)\n"
+  "  --covariance_fn=1 (POWER_EXPONENTIAL, default)\n"
+  "  --covariance_fn=2 (MATERN32)\n"
+  "  --covariance_fn=3 (MATERN52)\n"
+	/*  POWEREXPCOVFN == 1 */
+	/*  MATERN32      == 2 */
+	/*  MATERN52      == 3 */
   "  (-v=FRAC) --pca_variance=FRAC : sets the pca decomp to keep cpts up to variance fraction frac\n"
   "options which incluence interactive_mode:\n"
   "  (-q) --quiet: run without any extraneous output\n"
@@ -235,7 +238,10 @@ multi_modelstruct * load_training_file(
   fclose(fptr);
 
   pca_variance_fraction = clamp(pca_variance_fraction,0.0,1.0);
-  cov_fn_index = clamp(cov_fn_index, 0, 3);
+  cov_fn_index = clamp(cov_fn_index, 1, 3);
+	/*  POWEREXPCOVFN == 1 */
+	/*  MATERN32      == 2 */
+	/*  MATERN52      == 3 */
   regression_order = clamp(regression_order, 0, 3);
 
   /* Allocate the multi-model. Do the PCA decomp.
@@ -579,7 +585,10 @@ struct cmdLineOpts* global_opt_parse(int argc, char** argv)
   struct cmdLineOpts *opts = (struct cmdLineOpts*) malloc(sizeof(struct cmdLineOpts));
   // init with default values
   opts->regOrder = 0;
-  opts->covFn = 0;
+  opts->covFn = 1;
+	/*  POWEREXPCOVFN == 1 */
+	/*  MATERN32      == 2 */
+	/*  MATERN52      == 3 */
   opts->quietFlag = 0;
   opts->pca_variance = 0.99;
   opts->pcaOutputFlag = 0; // if this is one, output multivar results without rotation

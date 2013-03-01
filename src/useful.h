@@ -33,6 +33,7 @@ LICENSE:
 
 #include "gsl/gsl_rng.h"
 #include "gsl/gsl_vector.h"
+#include "gsl/gsl_matrix.h"
 
 void print_vector_quiet(gsl_vector *x, int n);
 //******************
@@ -117,3 +118,17 @@ void free_string_array(char ** string_array);
 #define print_str(fptr, s) fprintf((fptr), "%s\n", (s));
 #define print_double(fptr, x) fprintf((fptr), "%.17f\n", (x));
 #define print_doubles(fptr, x) fprintf((fptr), "%.17f ", (x));
+
+/**
+ * returns "true" or "false"
+ */
+const char * int_to_bool(int i);
+/**
+ * return true iff next word is not 0 or "false" or "FALSE" or "False"
+ */
+int read_bool(FILE *fptr);
+
+/**
+ * FIXME doc
+ */
+void gsl_matrix_fprint_block(FILE * fptr, gsl_matrix * m);

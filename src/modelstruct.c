@@ -3,6 +3,7 @@
 #include "assert.h"
 #include "math.h"
 #include "modelstruct.h"
+#include "multi_modelstruct.h"
 #include "libEmu/regression.h"
 #include "libEmu/emulator.h"
 #include "libEmu/maxmultimin.h"
@@ -46,12 +47,12 @@ void copy_modelstruct(modelstruct* dst, modelstruct* src){
 	dst->makeHVector = src->makeHVector;
 	dst->covariance_fn = src->covariance_fn;
 	dst->makeGradMatLength = src->makeGradMatLength;
-	
+
 }
-	
+
 
 /**
- * dump a model struct to fptr, in ascii each field is dumped in order they 
+ * dump a model struct to fptr, in ascii each field is dumped in order they
  * are defined.
  * vectors take a single line and matricies take nrows lines
  * we use the optstruct to get the sizes of everything
@@ -71,19 +72,19 @@ void dump_modelstruct(FILE *fptr, modelstruct* the_model, optstruct *opts){
 
 	for(i = 0; i < nmp; i++)
 		fprintf(fptr, "%lf ", gsl_vector_get(the_model->training_vector, i));
-	
+
 	for(i = 0; i < nthetas; i++)
 		fprintf(fptr, "%lf ", gsl_vector_get(the_model->thetas, i));
-	
+
 	for(i = 0; i < nparams; i++)
 		fprintf(fptr, "%lf ", gsl_vector_get(the_model->sample_scales, i));
-	
+
 }
 
 
 
 /**
- * load a model struct from fptr, we use the optstruct to allocate 
+ * load a model struct from fptr, we use the optstruct to allocate
  * the fields in the supplied modelstruct before filling them
  */
 void load_modelstruct(FILE* fptr, modelstruct* the_model, optstruct* opts){
@@ -92,7 +93,7 @@ void load_modelstruct(FILE* fptr, modelstruct* the_model, optstruct* opts){
 	int nthetas = opts->nthetas;
 	int i,j;
 	/* double temp; */
-	
+
 	// allocate everything first
 	the_model->xmodel = gsl_matrix_alloc(nmp, nparams);
 	the_model->training_vector = gsl_vector_alloc(nmp);
@@ -109,11 +110,11 @@ void load_modelstruct(FILE* fptr, modelstruct* the_model, optstruct* opts){
 	for(i = 0; i < nmp; i++){
 		gsl_vector_set(the_model->training_vector, i, read_double(fptr));
 	}
-	
+
 	for(i = 0; i < nthetas; i++){
 		gsl_vector_set(the_model->thetas, i, read_double(fptr));
 	}
-	
+
 	for(i = 0; i < nparams; i++){
 		gsl_vector_set(the_model->sample_scales, i, read_double(fptr));
 	}
@@ -135,7 +136,7 @@ void fill_modelstruct(modelstruct* the_model, optstruct* options, char** input_d
 
 	// there's a bug, this can't handle empty lines at the end of the input!
 	for(i = 0; i < options->nmodel_points; i++){
-		split_string = strtok(input_data[i], "\t ");		
+		split_string = strtok(input_data[i], "\t ");
 		for(j=0; j < options->nparams; j++){
 			//printf("%s\n", split_string);
 			// split string into tab or space tokens
@@ -157,7 +158,7 @@ void fill_modelstruct(modelstruct* the_model, optstruct* options, char** input_d
 	for(i = 0; i < options->nparams; i++){
 		average_value = 0;
 		for(j = 0; j < (options->nmodel_points-1); j++){
-			gsl_vector_set(differences, j, fabs(gsl_matrix_get(the_model->xmodel, j+1, i) - 
+			gsl_vector_set(differences, j, fabs(gsl_matrix_get(the_model->xmodel, j+1, i) -
 																					gsl_matrix_get(the_model->xmodel, j, i))) ;
 			average_value += gsl_vector_get(differences, j);
 		}
@@ -273,9 +274,9 @@ Sets global variables.  I'd like to eliminate those globals and move
 that information into the options structure.  Global variables means
 that we can't have two models in use at once.
 
-ccs, the fnptrs are now also in the modelstruct, the rub is that changing the 
+ccs, the fnptrs are now also in the modelstruct, the rub is that changing the
 estimation process to use the fnptrs will break the Rlibrary which is not ideal
-so estimation remains non-thread-safe but sampling the mean/variance at different locations 
+so estimation remains non-thread-safe but sampling the mean/variance at different locations
 is safe if you use the emulator_struct form
 *********************************************************************/
 modelstruct * alloc_modelstruct_2(
@@ -333,7 +334,7 @@ modelstruct * alloc_modelstruct_2(
 
 	/** this leaks sometimes */
 	model->xmodel = gsl_matrix_alloc(nmodel_points, nparams);
-	
+
 	/* alloc_modelstruct replacement code */
 	//model->xmodel = xmodel;
 	gsl_matrix_memcpy(model->xmodel, xmodel);
@@ -464,3 +465,75 @@ modelstruct* load_modelstruct_2(FILE *fptr) {
 	set_global_ptrs(model);
 	return model;
 }
+
+
+
+/**
+ * Load a modelstruct+optstruct from fptr. Inverse of dump_modelstruct_3.
+ */
+modelstruct* load_modelstruct_3(FILE *fptr, multi_modelstruct* multi, int index) {
+	assert(multi != NULL);
+	modelstruct* model = (modelstruct*)malloc(sizeof(modelstruct));
+	model->options = (optstruct*)malloc(sizeof(optstruct));
+
+	int i,j;
+	int nparams, nmodel_points, nthetas;
+
+	// copy from multi data structure.
+	model->options->nparams = nparams = multi->nparams;
+	model->options->nmodel_points = nmodel_points = multi->nmodel_points;
+	model->options->nthetas = nthetas = multi->number_thetas;
+	model->options->nemulate_points = 1; // not used;
+	model->options->regression_order = multi->regression_order;
+	model->options->nregression_fns = multi->nregression_fns;
+	model->options->fixed_nugget_mode = multi->fixed_nugget_mode;
+	model->options->fixed_nugget = multi->fixed_nugget;
+	model->options->cov_fn_index = multi->cov_fn_index;
+	model->options->use_data_scales = multi->use_data_scales;
+
+	model->options->grad_ranges = gsl_matrix_alloc(nthetas, 2);
+	gsl_matrix_memcpy (model->options->grad_ranges, multi->grad_ranges);
+	model->sample_scales = gsl_vector_alloc(nparams);
+	gsl_vector_memcpy (model->sample_scales, multi->sample_scales);
+
+	model->xmodel = gsl_matrix_alloc(nmodel_points, nparams);
+	gsl_matrix_memcpy (model->xmodel, multi->xmodel);
+
+	model->training_vector = gsl_vector_alloc(nmodel_points);
+	gsl_vector_view col_view = gsl_matrix_column(multi->pca_zmatrix, index);
+	gsl_vector_memcpy(model->training_vector, &(col_view.vector));
+
+	// read thetas from file
+	if (! check_word_is(fptr, "MODEL"))	return NULL;
+
+	int fileindex = read_integer(fptr);
+	if (fileindex != index) {
+		fprintf(stderr,"Expected index \"%d\", not \"%d\".\n",index, fileindex);
+		return NULL;
+	}
+	if (! check_word_is(fptr, "THETAS"))
+		return NULL;
+
+	model->thetas = gsl_vector_alloc(nthetas);
+	for(i = 0; i < nthetas; i++)
+		gsl_vector_set(model->thetas, i, read_double(fptr));
+
+	set_global_ptrs(model);
+	return model;
+}
+
+
+/**
+ * Load a modelstruct+optstruct from fptr. Inverse of load_modelstruct_3.
+ */
+void dump_modelstruct_3(FILE *fptr, modelstruct* model, int index) {
+	assert(model != NULL);
+	print_str(fptr, "MODEL");
+	print_int(fptr, index);
+	print_str(fptr, "THETAS");
+	int i;
+	for(i = 0; i < model->options->nthetas; i++)
+		print_double(fptr, gsl_vector_get(model->thetas, i));
+}
+
+

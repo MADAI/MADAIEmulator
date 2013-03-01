@@ -50,6 +50,142 @@ LICENSE:
  * the value in the pca_model_array is just a pointer to m, do we really want this?
  */
 
+
+/**
+ * \brief set the allowed ranges for the maximisation routine lbfgs
+ *
+ * \todo add a flag to optstruct for log-scaled and regular thetas
+ *
+ * summer-2011, we should try setting lower-limits on the length-scale thetas
+ * interms of the average nearest-neighbour distance in the input data.
+ * i.e in a 1d model we may have samples
+ *     x --- x --- x ---  x
+ * it doesn't make sense to have our length scale theta_1 < ---
+ * because we dont have information at that frequency!
+ *
+ * this fills the options->grad_ranges matrix with lower and upper bounds to be used in the
+ * bounded bfgs maximisation routine lbfgs (see libEmu/maxlbfgs.c) for more info on this.
+ *
+ *
+ * this is not the case for the other fns, but the rest of the code may have the assumption
+ * frozen into it that the ranges *are* log-scaled.
+ *
+ * the gsl_matrix* that is returned needs to be gsl_matrix_free()ed afterwards.
+ */
+static gsl_matrix * optimization_ranges(
+	gsl_vector *sample_scales,
+	int nthetas,
+	int cov_fn_index,
+	int use_data_scales,
+	int fixed_nugget_mode,
+	double fixed_nugget)
+{
+	int i = 0;
+
+	/** does it make sense to have the upper limit on theta be E(10.) = 22026? probably not
+	 */
+	double bigRANGE = 10.0;
+	double rangeMin = 0.0, rangeMax = 0.0;
+	double fixedNuggetLeeWay = 0.0 ;
+	double rangeMinLog = 0.0001;
+
+	double rangeMinNugget = -5.0;//log(0.0011);
+	double rangeMaxNugget = -2.0;//log(0.01); //what's a sensible upper limit here?
+	/**
+	 * alloc the grad_ranges matrix in the options and
+	 * put in some sensible defaults
+	 */
+	gsl_matrix * grad_ranges = gsl_matrix_alloc(nthetas, 2);
+
+	/*
+	 * setup that we're using a log scale
+	 */
+	if(cov_fn_index == POWEREXPCOVFN){
+		rangeMin = rangeMinLog;
+		rangeMax = 5; // exp(5) = 148 this is big!
+	} else {
+		rangeMin = 0;
+		rangeMax = bigRANGE;
+	}
+
+	gsl_matrix_set(grad_ranges, 0, 0, rangeMinLog);
+	gsl_matrix_set(grad_ranges, 0, 1, rangeMax);
+
+	gsl_matrix_set(grad_ranges, 1, 0, rangeMinNugget);
+	gsl_matrix_set(grad_ranges, 1, 1, rangeMaxNugget);
+
+	if(use_data_scales){
+		// use length scales set by data the
+		for(i = 2; i < nthetas; i++){
+
+			if(cov_fn_index == POWEREXPCOVFN){
+				rangeMin = 0.5*log(gsl_vector_get(sample_scales, i-2));
+				// try stopping the max range at 25 x the lower limit...
+				rangeMax = log(25*exp(rangeMin));
+
+				} else {
+				rangeMin = 0.5*(gsl_vector_get(sample_scales, i-2));
+				// try stopping the max range at 10 x the nyquist limit...
+				//rangeMax = *(gsl_vector_get(sample_scales, i-2));
+			}
+
+			if(rangeMin > rangeMax){
+				fprintf(stderr, "#ranges failed\n");
+				printf("# %d ranges: %lf %lf\n", i, rangeMin, rangeMax);
+				printf("# sampleScale: %lf\n", gsl_vector_get(sample_scales, i-2));
+				exit(EXIT_FAILURE);
+			}
+			gsl_matrix_set(grad_ranges, i, 0, rangeMin);
+			gsl_matrix_set(grad_ranges, i, 1, rangeMax);
+		}
+
+		if(isinf(rangeMin) == -1){
+			rangeMin = 0.00001;
+		}
+
+	} else { // use some default scales
+
+		for(i = 2; i < nthetas; i++){
+			gsl_matrix_set(grad_ranges, i, 0, rangeMin);
+			gsl_matrix_set(grad_ranges, i, 1, rangeMax);
+		}
+
+	}
+
+	if(fixed_nugget_mode == 1){
+		// force the nugget to be fixed_nugget +- 20%
+		fixedNuggetLeeWay = 0.20*(fixed_nugget);
+		//gsl_matrix_set(grad_ranges, 1, 0, fixed_nugget - fixedNuggetLeeWay);
+		//fix the min at the usual value
+		gsl_matrix_set(grad_ranges, 1, 0, rangeMinNugget);
+		gsl_matrix_set(grad_ranges, 1, 1, fixed_nugget + fixedNuggetLeeWay);
+		printf("# (reset) %d ranges: %lf %lf (nugget)\n", 1, gsl_matrix_get(grad_ranges, 1,0), gsl_matrix_get(grad_ranges, 1,1));
+	}
+
+
+	/**
+	 * debug info
+	 * print the ranges, this is annoying
+	 */
+	#ifdef DEBUGGRADRANGES
+	double low, high;
+	fprintf(stderr,"# grad ranges (logged):\n");
+	for(i = 0; i < nthetas; i++){
+		low = gsl_matrix_get(grad_ranges, i, 0);
+		high = gsl_matrix_get(grad_ranges, i, 1);
+		if(i == 0){
+			fprintf(stderr,"# %d ranges: %lf %lf (scale)\n", i, low, high);
+		} if (i == 1){
+			fprintf(stderr,"# %d ranges: %lf %lf (nugget)\n", i, low, high);
+		} else if (i > 1) {
+			fprintf(stderr,"# %d ranges: %lf %lf\n", i, low, high);
+		}
+	}
+	#endif
+	return grad_ranges;
+}
+
+
 /**
  * allocates a multi_modelstruct, like alloc_modelstruct_2,
  * but for multivariate models with t output values at each location
@@ -109,8 +245,18 @@ multi_modelstruct* alloc_multimodelstruct(gsl_matrix *xmodel_in,
   model->regression_order = regression_order;
   model->cov_fn_index = cov_fn_index;
 
+	model->fixed_nugget_mode = 0; /* only option. */
+	model->fixed_nugget = 0.0; /* not used. */
+	model->nregression_fns	= 1 + ((model->regression_order) * (model->nparams));
+	model->use_data_scales = 1;	 /* set grad ranges using the data scales */
+
   /* ntheta is a function of cov_fn_index and nparams */
   model->number_thetas = (cov_fn_index == POWEREXPCOVFN) ? (nparams + 2) : 3;
+
+	model->sample_scales = fill_sample_scales_vec(model->xmodel);
+	model->grad_ranges = optimization_ranges(model->sample_scales,
+		model->number_thetas, model->cov_fn_index, model->use_data_scales,
+		model->fixed_nugget_mode, model->fixed_nugget);
 
 
   /* fill in the mean vector, should probably sum this more carefully... */
@@ -391,23 +537,68 @@ void dump_multi_modelstruct(FILE* fptr, multi_modelstruct *m){
   print_int(fptr, m->nt);
   for(i = 0; i < (m->nt); i++)
     print_str(fptr, m->output_names[i]);
-  fprintf(fptr, "EMULATOR\n");
+
+  print_str(fptr,"EMULATOR");
+
+  print_str(fptr,"NUMBER_PCA_OUTPUTS");
   print_int(fptr, m->nr);
+
+  print_str(fptr,"NUMBER_TRAINING_POINTS");
   print_int(fptr, m->nmodel_points);
+
+  print_str(fptr,"COVARIANCE_FUNCTION_INDEX");
   print_int(fptr, m->cov_fn_index);
+
+  print_str(fptr,"REGRESSION_ORDER");
   print_int(fptr, m->regression_order);
 
-  // multimodel thetas are inside pca_model_array...
-  gsl_matrix_fprintf(fptr, m->xmodel, "%.17f");
-  gsl_matrix_fprintf(fptr, m->training_matrix, "%.17f");
+  print_str(fptr,"FIXED_NUGGET_MODE");
+  print_str(fptr, int_to_bool(m->fixed_nugget_mode));
 
-  // now the rest of the pca information
+  print_str(fptr,"FIXED_NUGGET");
+  print_double(fptr, m->fixed_nugget);
+
+  print_str(fptr,"USE_DATA_SCALES");
+  print_str(fptr, int_to_bool(m->use_data_scales));
+
+  print_str(fptr,"NUMBER_THETAS");
+  print_int(fptr, m->number_thetas);
+
+  print_str(fptr,"NUMBER_REGRESSION_FUNCTIONS");
+  print_int(fptr, m->nregression_fns);
+
+  print_str(fptr,"PARAMETER_VALUES");
+  gsl_matrix_fprint_block(fptr, m->xmodel);
+  //  gsl_matrix_fprintf(fptr, m->xmodel, "%.17f");
+
+  print_str(fptr,"OUTPUT_VALUES");
+  gsl_matrix_fprint_block(fptr, m->training_matrix);
+  //  gsl_matrix_fprintf(fptr, m->training_matrix, "%.17f");
+
+  print_str(fptr,"OUTPUT_PCA_EIGENVALUES");
   gsl_vector_fprintf(fptr, m->pca_evals_r, "%.17f");
-  gsl_matrix_fprintf(fptr, m->pca_evecs_r, "%.17f");
-  gsl_matrix_fprintf(fptr, m->pca_zmatrix, "%.17f");
+
+  print_str(fptr,"OUTPUT_PCA_EIGENVECTORS");
+  gsl_matrix_fprint_block(fptr, m->pca_evecs_r);
+  //gsl_matrix_fprintf(fptr, m->pca_evecs_r, "%.17f");
+
+  print_str(fptr,"PCA_DECOMPOSED_Z_VALUES");
+  gsl_matrix_fprint_block(fptr, m->pca_zmatrix);
+  //gsl_matrix_fprintf(fptr, m->pca_zmatrix, "%.17f");
+
+  print_str(fptr,"MEANS_OF_TRAINING_POINTS");
+  gsl_vector_fprintf(fptr, m->training_mean, "%.17f");
+
+  print_str(fptr,"SAMPLE_SCALES");
+  gsl_vector_fprintf(fptr, m->sample_scales, "%.17f");
+
+  print_str(fptr,"GRAD_RANGES");
+  gsl_matrix_fprint_block(fptr, m->grad_ranges);
+  //gsl_matrix_fprintf(fptr, m->grad_ranges, "%.17f");
+
 
   for(i = 0; i < (m->nr); i++){
-    dump_modelstruct_2(fptr, m->pca_model_array[i]);
+    dump_modelstruct_3(fptr, m->pca_model_array[i],i);
   }
   fprintf(fptr, "END_OF_FILE\n");
 }
@@ -428,18 +619,12 @@ multi_modelstruct *load_multi_modelstruct(FILE* fptr){
   double * parameter_minima, * parameter_maxima;
 
   discard_comments(fptr, '#');
-  if (! check_word_is(fptr, "VERSION")) {
-    fprintf(stderr, "wrong version string\n");
-    return NULL;
-  }
+  if (! check_word_is(fptr, "VERSION")) return NULL;
   if (read_integer(fptr) != 1) {
     fprintf(stderr, "wrong version!\n");
     return NULL;
   }
-  if (! check_word_is(fptr, "PARAMETERS")) {
-    fprintf(stderr, "missing keyword: PARAMETERS\n");
-    return NULL;
-  }
+  if (! check_word_is(fptr, "PARAMETERS")) return NULL;
   nparams = read_integer(fptr);
   parameter_names = allocate_string_array(nparams);
   parameter_minima = MallocChecked(nparams * sizeof(double));
@@ -449,63 +634,96 @@ multi_modelstruct *load_multi_modelstruct(FILE* fptr){
     parameter_minima[i] = read_double(fptr);
     parameter_maxima[i] = read_double(fptr);
   }
-  if (! check_word_is(fptr, "OUTPUTS")) {
-    fprintf(stderr, "missing keyword: OUTPUTS\n");
-    return NULL;
-  }
+
+  if (! check_word_is(fptr, "OUTPUTS")) return NULL;
   number_of_outputs = read_integer(fptr);
   output_names = allocate_string_array(number_of_outputs);
   for (i = 0; i < number_of_outputs; ++i) {
     output_names[i] = read_word(fptr);
   }
-  if (! check_word_is(fptr, "EMULATOR")) {
-    fprintf(stderr, "missing keyword: EMULATOR\n");
-    return NULL;
-  }
-  number_of_pca_outputs = read_integer(fptr);
-  nmodel_points = read_integer(fptr);
-  cov_fn_index = read_integer(fptr);
-  regression_order = read_integer(fptr);
 
-  multi_modelstruct *m = (multi_modelstruct*)malloc(sizeof(multi_modelstruct));
-  m->nt = number_of_outputs;
-  m->nr = number_of_pca_outputs;
+  if (! check_word_is(fptr, "EMULATOR")) return NULL;
+
+  multi_modelstruct * m
+    = (multi_modelstruct*)malloc(sizeof(multi_modelstruct));
   m->nparams = nparams;
-  m->nmodel_points = nmodel_points;
-  m->cov_fn_index = cov_fn_index;
-  m->regression_order = regression_order;
+  m->nt = number_of_outputs;
   m->parameter_names = parameter_names;
   m->output_names = output_names;
   m->parameter_minima = parameter_minima;
   m->parameter_maxima = parameter_maxima;
-  m->number_thetas = (cov_fn_index == POWEREXPCOVFN) ? (nparams + 2) : 3;
+
+  if (! check_word_is(fptr, "NUMBER_PCA_OUTPUTS")) return NULL;
+  m->nr = number_of_pca_outputs = read_integer(fptr);
+
+  if (! check_word_is(fptr, "NUMBER_TRAINING_POINTS")) return NULL;
+  m->nmodel_points = nmodel_points = read_integer(fptr);
+
+  if (! check_word_is(fptr, "COVARIANCE_FUNCTION_INDEX")) return NULL;
+  m->cov_fn_index = cov_fn_index = read_integer(fptr);
+
+  if (! check_word_is(fptr, "REGRESSION_ORDER")) return NULL;
+  m->regression_order = regression_order = read_integer(fptr);
+
+  if (! check_word_is(fptr, "FIXED_NUGGET_MODE")) return NULL;
+  m->fixed_nugget_mode = read_bool(fptr); /* only option. */
+
+  if (! check_word_is(fptr, "FIXED_NUGGET")) return NULL;
+  m->fixed_nugget = read_double(fptr); /* not used. */
+
+  if (! check_word_is(fptr, "USE_DATA_SCALES")) return NULL;
+  m->use_data_scales = read_bool(fptr);
+
+  if (! check_word_is(fptr, "NUMBER_THETAS")) return NULL;
+  m->number_thetas = read_integer(fptr);
+  assert( m->number_thetas ==
+  				((cov_fn_index == POWEREXPCOVFN) ? (nparams + 2) : 3));
+
+  if (! check_word_is(fptr, "NUMBER_REGRESSION_FUNCTIONS")) return NULL;
+  m->nregression_fns = read_integer(fptr);
+  assert( m->nregression_fns == (1 + ((regression_order) * (nparams))));
+
 
   // now we can allocate everything in m
   m->xmodel = gsl_matrix_alloc(nmodel_points, nparams);
   m->training_matrix = gsl_matrix_alloc(nmodel_points, number_of_outputs);
-  m->training_mean = gsl_vector_alloc(number_of_outputs); // do we need this? (yes!)
-  m->pca_model_array
-		= (modelstruct**)malloc(sizeof(modelstruct*) * number_of_pca_outputs);
+  m->training_mean = gsl_vector_alloc(number_of_outputs);
   m->pca_evals_r = gsl_vector_alloc(number_of_pca_outputs);
   m->pca_evecs_r = gsl_matrix_alloc(number_of_outputs, number_of_pca_outputs);
   m->pca_zmatrix = gsl_matrix_alloc(nmodel_points, number_of_pca_outputs);
+  m->sample_scales = gsl_vector_alloc(nparams);
+  m->grad_ranges = gsl_matrix_alloc(m->number_thetas, 2);
+  m->pca_model_array
+    = (modelstruct**)malloc(sizeof(modelstruct*) * number_of_pca_outputs);
+  ////////////////////////////
 
+  if (! check_word_is(fptr, "PARAMETER_VALUES")) return NULL;
   gsl_matrix_fscanf(fptr, m->xmodel);
+
+  if (! check_word_is(fptr, "OUTPUT_VALUES")) return NULL;
   gsl_matrix_fscanf(fptr, m->training_matrix);
 
-  // now the rest of the pca information
+  if (! check_word_is(fptr, "OUTPUT_PCA_EIGENVALUES")) return NULL;
   gsl_vector_fscanf(fptr, m->pca_evals_r);
+
+  if (! check_word_is(fptr, "OUTPUT_PCA_EIGENVECTORS")) return NULL;
   gsl_matrix_fscanf(fptr, m->pca_evecs_r);
+
+  if (! check_word_is(fptr, "PCA_DECOMPOSED_Z_VALUES")) return NULL;
   gsl_matrix_fscanf(fptr, m->pca_zmatrix);
 
-  for(i = 0; i < number_of_pca_outputs; i++)
-    m->pca_model_array[i] = load_modelstruct_2(fptr);
+  if (! check_word_is(fptr, "MEANS_OF_TRAINING_POINTS")) return NULL;
+  gsl_vector_fscanf(fptr, m->training_mean);
 
-  /* fill in the mean vector */
-  for(i = 0; i < number_of_outputs; i++){
-    col_view = gsl_matrix_column(m->training_matrix, i);
-    mean_temp = vector_elt_sum(&col_view.vector, nmodel_points);
-    gsl_vector_set(m->training_mean, i, (mean_temp/((double)nmodel_points)) );
+  if (! check_word_is(fptr, "SAMPLE_SCALES")) return NULL;
+  gsl_vector_fscanf(fptr, m->sample_scales);
+
+  if (! check_word_is(fptr, "GRAD_RANGES")) return NULL;
+  gsl_matrix_fscanf(fptr, m->grad_ranges);
+
+  for(i = 0; i < number_of_pca_outputs; i++) {
+    m->pca_model_array[i] = load_modelstruct_3(fptr,m,i);
+    assert(m->pca_model_array[i] != NULL);
   }
   return m;
 }
@@ -548,3 +766,9 @@ void free_multimodelstruct(multi_modelstruct *m)
   gsl_matrix_free(m->pca_evecs_r);
   gsl_matrix_free(m->pca_zmatrix);
 }
+
+
+
+
+
+

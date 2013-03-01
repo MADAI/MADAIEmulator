@@ -149,6 +149,34 @@ typedef struct multi_modelstruct{
    * Its value is a function of cov_fn_index and nparams.
    */
 	int number_thetas;
+
+	/**
+	 * not used.  set to false
+	 */
+	int fixed_nugget_mode;
+	/**
+	 * not used.  set to 0.0
+	 */
+	double fixed_nugget;
+	/**
+	 * m->nregression_fns	= 1 + ((m->regression_order) * (m->nparams));
+	 */
+	int nregression_fns;
+	/**
+	 * set this to not zero if you want to use the length scales set by the data
+	 */
+	int use_data_scales;
+	/**
+	 * a function of xmodel
+	 */
+	gsl_vector * sample_scales;
+	/**
+	 * a function of sample_scales, number_thetas, cov_fn_index,
+	 * use_data_scales, fixed_nugget_mode, and fixed_nugget
+	 */
+	gsl_matrix * grad_ranges;
+
+
 } multi_modelstruct;
 
 multi_modelstruct* alloc_multimodelstruct(gsl_matrix *xmodel_in, gsl_matrix *training_matrix_in,

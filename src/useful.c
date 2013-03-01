@@ -127,7 +127,10 @@ int check_word_is(FILE *fptr, const char * str) {
   int ret = fscanf(fptr, "%4095s", buffer);
   assert(ret == 1);
   buffer[4095] = '\0';
-  return str_equal(buffer, str);
+  if (str_equal(buffer, str))
+		return 1;
+	fprintf(stderr, "Error: expected \"%s\" but got \"%s\".\n",str,buffer);
+	return 0;
 }
 
 char ** allocate_string_array(int size) {
@@ -169,3 +172,31 @@ void discard_comments( FILE * fptr, char comment_character ) {
   return;
 }
 
+
+const char * int_to_bool(int i) {
+	return (i != 0) ? "true" : "false";
+}
+
+int read_bool(FILE *fptr) {
+  assert(fptr != NULL);
+  char buffer[4096]; // more than we need on the stack.
+  int ret = fscanf(fptr, "%4095s", buffer);
+  assert(ret == 1);
+  buffer[4095] = '\0'; // make sure string is terminated.
+	return (! (str_equal(buffer,"false") ||
+	           str_equal(buffer,"FALSE") ||
+	           str_equal(buffer,"False") ||
+	           str_equal(buffer,"0")));
+}
+
+
+
+void gsl_matrix_fprint_block(FILE * fptr, gsl_matrix * m) {
+	static char format [] = "%.17f";
+	size_t row, col;
+	for(row = 0; row < m->size1; row++) {
+		for(col = 0; col < ((m->size2) - 1); col++)
+			fprintf(fptr, "%.17f\t", gsl_matrix_get (m, row, col));
+		fprintf(fptr, "%.17f\n", gsl_matrix_get (m, row, (m->size2) - 1));
+	}
+}
